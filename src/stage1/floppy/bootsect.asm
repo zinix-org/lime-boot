@@ -17,6 +17,10 @@
 org 0x7C00      ; we expect the BIOS to load us at 0x7C00
 bits 16         ; the assembler should emit 16-bit code
 
+
+%define ENDL 0x0D, 0x0A
+
+
 jmp short _start
 nop
 
@@ -65,10 +69,42 @@ _start:
     ; we excpect DL to be the drive number
     mov [ebr.drive_number], dl
 
+    mov si, msg_loading
+    call puts
+
 halt:
     hlt
     jmp halt
 
+
+;
+; print a string to the screen
+; parameters:
+;   - DS:SI: the string to print
+;
+puts:
+    pusha
+
+.loop:
+    lodsb       ; load SI into AL and increment SI
+    or al, al
+    jz .done
+
+    mov ah, 0x0E
+    mov bh, 0
+    int 0x10
+
+    jmp .loop
+
+.done:
+    popa
+
+
+msg_loading: db "Loading...", ENDL, 0
+
+
+times 508-($-$$) db 0
+stage2_lba: dw 0x0      ; should be set by install tool
 
 times 510-($-$$) db 0
 dw 0xAA55
