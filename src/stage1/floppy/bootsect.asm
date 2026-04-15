@@ -14,12 +14,13 @@
 ; You should have received a copy of the GNU General Public License
 ; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-org 0x7C00      ; we expect the BIOS to load us at 0x7C00
 bits 16         ; the assembler should emit 16-bit code
 
 
 %define ENDL 0x0D, 0x0A
 
+
+section .bpb
 
 jmp short _start
 nop
@@ -46,6 +47,10 @@ ebr:
 .volume_label:          db "LIMEBOOT   "            ; 11 bytes
 .filesystem_id:         db "FAT12   "               ; 8 bytes
 
+
+section .text
+
+global _start
 _start:
     cli
     cld
@@ -66,11 +71,11 @@ _start:
     retf
 
 .continue:
-    ; we excpect DL to be the drive number
-    mov [ebr.drive_number], dl
-
     mov si, msg_loading
     call puts
+
+    ; we excpect DL to be the drive number
+    mov [ebr.drive_number], dl
 
 halt:
     hlt
@@ -100,11 +105,11 @@ puts:
     popa
 
 
+section .rodata
+
 msg_loading: db "Loading...", ENDL, 0
 
 
-times 508-($-$$) db 0
-stage2_lba: dw 0x0      ; should be set by install tool
+section .data
 
-times 510-($-$$) db 0
-dw 0xAA55
+stage2_cluster: dw 0        ; should be set by install tool
