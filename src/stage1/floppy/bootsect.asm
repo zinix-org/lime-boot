@@ -35,7 +35,7 @@ bdb:
 .hidden_sector_count:   dd 0
 .large_sector_count:    dd 0
 ebr:
-.drive_number:          db 0x00                     ; 0x00 = floppy disk
+.drive_number:          db 0                        ; 0x00 = first floppy disk, this is temporary and machine-specific
                         db 0                        ; reserved
 .signature:             db 0x29
 .volume_id:             db 0x12, 0x34, 0x56, 0x78   ; serial number
@@ -46,7 +46,7 @@ _start:
     cli
     cld
 
-    ; setup data segments because some BIOSes might put us at 0x7C00:0x0000
+    ; setup data segments
     xor ax, ax
     mov ds, ax
     mov es, ax
@@ -56,9 +56,14 @@ _start:
 
     sti
 
-    ;
-    ; TODO: implement :3
-    ;
+    ; make sure we run at 0000:7C00 (some BIOSes might put is at 07C0:0000)
+    push es
+    push word .continue
+    retf
+
+.continue:
+    ; we excpect DL to be the drive number
+    mov [ebr.drive_number], dl
 
 halt:
     hlt

@@ -11,9 +11,7 @@ export BUILD_DIR ?= $(abspath build)
 all:
 
 .PHONY: floppy
-floppy: $(BUILD_DIR)/floppy/stage1.bin
-
-$(BUILD_DIR)/floppy/stage1.bin:
+floppy:
 	@$(MAKE) -C $(SRC_DIR)/stage1/floppy
 
 .PHONY: clean
