@@ -3,21 +3,25 @@ Stage 1 uses the following PHYSICAL memory regions:
 
 0000:7800
     Length : 1 KiB
-    Bootsector Stack
+    Stage 1 stack (SP = 7C00)
 
 0000:7C00
     Length : 512 bytes
-    Bootsector Code
+    Stage 1 code
 
 0000:7E00
     Length : 8 KiB
-    File Allocation Table Buffer
+    FAT buffer
 
 0000:9E00
     Length : 472.5 KiB
     Stage 2 code
 
 Stage 2 uses the following PHYSICAL memory regions:
+
+0000:9A00
+    Length : 1 KiB
+    Stage 2 stack (SP = 9E00)
 
 0000:9E00
     Length : 472.5 KiB

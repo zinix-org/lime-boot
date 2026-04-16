@@ -18,6 +18,8 @@ bits 16         ; the assembler should emit 16-bit code
 
 
 %define ENDL 0x0D, 0x0A
+%define STAGE2_LOAD_SEGMENT 0
+%define STAGE2_LOAD_OFFSET 0x9E00
 
 
 section .bpb
@@ -76,6 +78,30 @@ _start:
     ; we excpect DL to be the drive number
     mov [ebr.drive_number], dl
 
+    ; load the FAT into memory
+    mov ax, [bdb.reserved_sectors]
+    mov bx, fat_buffer
+    mov cl, [bdb.sectors_per_fat]
+    mov dl, [ebr.drive_number]
+    call disk_read
+
+    mov bx, STAGE2_LOAD_SEGMENT
+    mov bx, es
+    mov bx, STAGE2_LOAD_OFFSET
+
+    mov ax, [stage2_cluster]
+    mov [temp_stage2_cluster], ax
+
+.load_stage2_loop:
+    ; AX    : LBA to read (cluster)
+    ; ES:BX : stage 2 load address
+    
+    mov ax, [bdb.fat_count]
+    mov dx, [bdb.sectors_per_fat]
+    mul dx                          ; DX'AX = fat_count * sectors_per_fat
+    add ax, [bdb.reserved_sectors]
+    push ax                         ; save reserved + FATs
+
 halt:
     hlt
     jmp halt
@@ -105,11 +131,141 @@ puts:
     ret
 
 
-section .rodata
+;
+; convert LBA to CHS address
+; parameters:
+;   - AX: logical block address
+; returns:
+;   - CX [bits 0-5]: sector number
+;   - CX [bits 6-15]: cylinder
+;   - DH: head
+;
+lba_to_chs:
+    push ax
+    push dx
 
+    xor dx, dx
+
+    div word [bdb.sectors_per_track]    ; AX = LBA / sectors per track
+                                        ; DX = LBA % sectors per track
+
+    inc dx                              ; DX = DX + 1 which is the sector
+    mov cx, dx                          ; now CX has the sector
+
+    xor dx, dx
+
+    div word [bdb.head_count]           ; AX = AX / head count which is cylinder
+                                        ; DX = AX % head count which is head
+
+    ; AX = cylinder
+    ; DX = head
+    ; CX = sector
+
+    mov dh, dl
+
+    ; CX =       ---CH--- ---CL---
+    ; cylinder : 76543210 98
+    ; sector   :            543210
+
+    mov ch, al
+
+    ; now set the weird 2 bits
+    ; AH before (from AX) : 0 0 0 0 0 0 9 8 <- the 9 and 8 are bits not numbers but bits
+    ; AH after            : 9 8 0 0 0 0 0 0
+    shl ah, 6
+
+    or cl, ah       ; now OR it with cl which already contains the sector number (from cx)
+
+    pop ax
+    mov dl, al      ; restore DL, and not DH (the head)
+    pop ax
+    ret
+
+
+;
+; read sectors from a floppy
+; parameters:
+;   - AX: logical block address
+;   - CL: sector count
+;   - DL: drive number
+;   - es:bx: memory buffer
+;
+disk_read:
+    pusha
+
+    push cx
+    call lba_to_chs
+    pop ax
+
+    ; AL now has the sector count and CX has sector number and cylinder
+
+    mov ah, 0x2
+    mov di, 3           ; retry count
+
+.retry:
+    pusha
+    stc
+
+    int 0x13
+    jnc .done
+
+    ; read failed
+    popa
+    call disk_reset
+
+    dec di
+    test di, di
+    jnz .retry
+
+.fail:
+    jmp disk_error
+
+.done:
+    popa
+
+    popa
+    ret
+
+
+;
+; reset the disk controller
+; parameters:
+;   - DL: drive number
+;
+disk_reset:
+    pusha
+
+    mov ah, 0
+    stc
+    int 0x13
+    jc disk_error
+
+    popa
+    ret
+
+
+disk_error:
+    mov si, msg_disk_error
+    call puts
+    jmp wait_key_and_reboot
+
+wait_key_and_reboot:
+    mov ah, 0
+    int 16h             ; wait for keypress
+    jmp 0xFFFF:0        ; beginning of BIOS code
+
+
+section .rodata
 msg_loading: db "Loading...", ENDL, 0
+msg_disk_error: db "DISK READ ERROR!", ENDL, 0
+msg_hi: db "Hi :D", ENDL, 0
 
 section .data
-
 global stage2_cluster
 stage2_cluster: dw 0        ; should be set by install tool
+
+temp_stage2_cluster: dw 0   ; cluster inside data region
+temp_root_dir_end: dw 0
+
+section .bss
+fat_buffer: resb 8 * 1024
