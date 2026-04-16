@@ -102,12 +102,12 @@ puts:
 
 .done:
     popa
+    ret
 
 
 section .rodata
 
 msg_loading: db "Loading...", ENDL, 0
-
 
 section .data
 
