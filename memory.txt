@@ -1,0 +1,12 @@
+
+Lime Boot using the following PHYSICAL memory regions:
+
+0000'7800
+    Length : 1 KiB
+    Stage  : 1
+    Bootsector stack
+
+0000'7C00
+    Length : 512 bytes
+    Stage  : 1
+    Bootsector code

@@ -50,7 +50,6 @@ ebr:
 
 section .text
 
-global _start
 _start:
     cli
     cld
@@ -112,4 +111,5 @@ msg_loading: db "Loading...", ENDL, 0
 
 section .data
 
+global stage2_cluster
 stage2_cluster: dw 0        ; should be set by install tool
