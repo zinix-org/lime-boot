@@ -13,6 +13,7 @@ all:
 .PHONY: floppy
 floppy:
 	@$(MAKE) -C $(SRC_DIR)/stage1/floppy
+	@$(MAKE) -C $(SRC_DIR)/stage2
 
 .PHONY: clean
 clean:

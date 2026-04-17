@@ -14,7 +14,6 @@
 ; You should have received a copy of the GNU General Public License
 ; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-org 0x9E00      ; we get loaded at 0x9E00
 bits 16         ; the assembler should emit 16-bit code
 
 jmp _start

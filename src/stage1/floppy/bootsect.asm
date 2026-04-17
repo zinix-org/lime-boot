@@ -93,14 +93,60 @@ _start:
     mov [temp_stage2_cluster], ax
 
 .load_stage2_loop:
-    ; AX    : LBA to read (cluster)
-    ; ES:BX : stage 2 load address
+    mov ax, [temp_stage2_cluster]
+
+    add ax, 31          ; so it happends that i am way too lazy and stupid to
+                        ; calulate this myself. TODO i guess
+                        ;
+                        ; it is basically just cuz temp_stage2_cluster is
+                        ; inside the data region but we want the LBA to be on
+                        ; the disk itself
     
-    mov ax, [bdb.fat_count]
-    mov dx, [bdb.sectors_per_fat]
-    mul dx                          ; DX'AX = fat_count * sectors_per_fat
-    add ax, [bdb.reserved_sectors]
-    push ax                         ; save reserved + FATs
+    mov cl, 1
+    mov dl, [ebr.drive_number]
+    call disk_read
+
+    add bx, [bdb.sector_size]
+
+    ; compute LBA of next cluster
+    mov ax, [temp_stage2_cluster]
+    mov cx, 3
+    mul cx                          ; AX = temp_stage2_cluster * 3
+    mov cx, 2
+    div cx
+
+    mov si, fat_buffer
+    add si, ax
+    mov ax, [ds:si]
+
+    or dx, dx
+    jz .even
+
+.odd:
+    shr ax, 4
+    jmp .next_cluster_after
+
+.even:
+    and ax, 0xFFF
+
+.next_cluster_after:
+    cmp ax, 0xFF8
+    jae .read_finish
+
+    mov [temp_stage2_cluster], ax
+    jmp .load_stage2_loop
+
+.read_finish:
+    mov dl, [ebr.drive_number]
+
+    mov ax, STAGE2_LOAD_SEGMENT
+    mov ds, ax
+    mov es, ax
+
+    jmp STAGE2_LOAD_SEGMENT:STAGE2_LOAD_OFFSET
+
+    jmp wait_key_and_reboot
+    cli
 
 halt:
     hlt

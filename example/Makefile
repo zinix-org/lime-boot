@@ -9,10 +9,17 @@ TARGET ?= floppy.img
 all: $(TARGET)
 
 .PHONY: run
-run: always $(TARGET)
+run: $(TARGET)
 	qemu-system-i386 														\
 		-cpu 486,fpu=off 													\
 		-drive file=$(TARGET),format=raw,if=floppy
+
+.PHONY: dbg
+dbg: $(TARGET)
+	qemu-system-i386 														\
+		-cpu 486,fpu=off 													\
+		-drive file=$(TARGET),format=raw,if=floppy -s -S
+
 
 .PHONY: clean
 clean:
