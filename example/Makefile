@@ -34,3 +34,4 @@ $(TARGET):
 	mkfs.fat -F 12 -n "LIMEBOOT" $(TARGET)
 	dd if=../build/floppy/stage1.bin of=$(TARGET) conv=notrunc
 	mcopy -i $(TARGET) ../build/stage2.bin "::stage2.bin"
+	cargo run
