@@ -7,7 +7,8 @@ use std::{
 fn main() {
     let stage2_location_regex =
         Regex::new(r#"0x([0-9a-f]+)\s+stage2_cluster"#).expect("failed to compile regex");
-    let map_file = read_to_string("build/floppy/stage1.map")
+
+    let map_file = read_to_string("../build/floppy/stage1.map")
         .expect("failed to read `build/floppy/stage1.map`");
 
     let captures = stage2_location_regex
@@ -27,20 +28,27 @@ fn main() {
     let mut img_file = OpenOptions::new()
         .read(true)
         .write(true)
-        .open("build/floppy/stage1.img")
+        .open("floppy.img")
         .expect("failed to open floppy image file");
+
+    let cluster = {
+        let fat_fs = fatfs::FileSystem::new(&img_file, fatfs::FsOptions::new()).unwrap();
+        let root_dir = fat_fs.root_dir();
+
+        // Using find or a loop to get your specific entry
+        root_dir
+            .iter()
+            .map(|e| e.unwrap())
+            .find(|e| e.file_name().to_uppercase() == "STAGE2.BIN") // Example: look for a specific file
+            .map(|e| e.data.first_cluster_lo) // fatfs usually provides a helper for this
+            .expect("could not find stage2 file")
+    };
+
+    println!("Stage 2 cluster: 0x{:x}", cluster);
 
     img_file
         .seek(SeekFrom::Start(cluster_address as u64))
         .expect("failed to seek in bootsector file");
-
-    let mut cluster = None;
-
-    let fat_fs = fatfs::FileSystem::new(&img_file, fatfs::FsOptions::new()).unwrap();
-    let root_dir = fat_fs.root_dir();
-    for entry in root_dir.iter() {
-        let entry = entry.unwrap();
-    }
 
     img_file
         .write_all(&cluster.to_le_bytes())
