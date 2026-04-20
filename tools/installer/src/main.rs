@@ -24,18 +24,25 @@ fn main() {
 
     println!("Found stage 2 cluster symbol at 0x{:x}", cluster_address);
 
-    let mut bin_file = OpenOptions::new()
+    let mut img_file = OpenOptions::new()
         .read(true)
         .write(true)
-        .open("build/floppy/stage1.bin")
-        .expect("failed to open bootsector file");
-    bin_file
+        .open("build/floppy/stage1.img")
+        .expect("failed to open floppy image file");
+
+    img_file
         .seek(SeekFrom::Start(cluster_address as u64))
         .expect("failed to seek in bootsector file");
 
-    let cluster: u16 = 0x1234;
+    let mut cluster = None;
 
-    bin_file
+    let fat_fs = fatfs::FileSystem::new(&img_file, fatfs::FsOptions::new()).unwrap();
+    let root_dir = fat_fs.root_dir();
+    for entry in root_dir.iter() {
+        let entry = entry.unwrap();
+    }
+
+    img_file
         .write_all(&cluster.to_le_bytes())
         .expect("failed to write cluster number to bootsector");
 }
