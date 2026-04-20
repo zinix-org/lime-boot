@@ -85,10 +85,13 @@ _start:
     mov dl, [ebr.drive_number]
     call disk_read
 
+    ; set BX to where we want to load stage 2 (see memory.txt)
     mov bx, STAGE2_LOAD_SEGMENT
     mov bx, es
     mov bx, STAGE2_LOAD_OFFSET
 
+    ; we don't want to override our good known cluster number which was set by
+    ; the installation program
     mov ax, [stage2_cluster]
     mov [temp_stage2_cluster], ax
 
@@ -102,42 +105,49 @@ _start:
                         ; inside the data region but we want the LBA to be on
                         ; the disk itself
     
-    mov cl, 1
-    mov dl, [ebr.drive_number]
+    mov cl, 1                   ; we only want 1 sector
+    mov dl, [ebr.drive_number]  ; we want to read from the floppy
     call disk_read
 
-    add bx, [bdb.sector_size]
+    add bx, [bdb.sector_size]   ; ES:BX is where disk_read reads to
 
     ; compute LBA of next cluster
-    mov ax, [temp_stage2_cluster]
+    mov ax, [temp_stage2_cluster]   ; restore cluster ID (not on disk, in data region)
     mov cx, 3
     mul cx                          ; AX = temp_stage2_cluster * 3
     mov cx, 2
-    div cx
+    div cx                          ; AX = AX / 2
+    
+    ; now AX is the last cluster read * 1.5 (12 bits = 1.5 bytes)
+    ;
+    ; the remainder in DX is 1 if the number was odd because if we divide an
+    ; even number with 2 it will be 0
 
     mov si, fat_buffer
     add si, ax
     mov ax, [ds:si]
 
+    ; now we have 16 bits loaded into AX with 4 we need to throw away.
+
     or dx, dx
     jz .even
 
 .odd:
-    shr ax, 4
+    shr ax, 4                   ; shift right so we only have the cluster number
     jmp .next_cluster_after
 
 .even:
-    and ax, 0xFFF
+    and ax, 0xFFF               ; mask out the cluster number
 
 .next_cluster_after:
     cmp ax, 0xFF8
-    jae .read_finish
+    jae .read_finish            ; if above or equal we have read to the end of the chain
 
-    mov [temp_stage2_cluster], ax
-    jmp .load_stage2_loop
+    mov [temp_stage2_cluster], ax   ; V-------------------------------------------------------V
+    jmp .load_stage2_loop           ; if not continue with the cluster number we masked/shifted
 
 .read_finish:
-    mov dl, [ebr.drive_number]
+    mov dl, [ebr.drive_number]      ; restore the drive number for stage 2
 
     mov ax, STAGE2_LOAD_SEGMENT
     mov ds, ax
