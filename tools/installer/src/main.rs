@@ -5,9 +5,17 @@ use std::{
 };
 
 fn main() {
+    // I actually made this regex myself :D
     let stage2_location_regex =
         Regex::new(r#"0x([0-9a-f]+)\s+stage2_cluster"#).expect("failed to compile regex");
 
+    // very nice path xD
+    //
+    // I kinda just force you to use these paths...
+    // I think imma use clap for passing params...
+    // ...
+    // maybe.....
+    //
     let map_file = read_to_string("../build/floppy/stage1.map")
         .expect("failed to read `build/floppy/stage1.map`");
 
@@ -35,12 +43,11 @@ fn main() {
         let fat_fs = fatfs::FileSystem::new(&img_file, fatfs::FsOptions::new()).unwrap();
         let root_dir = fat_fs.root_dir();
 
-        // Using find or a loop to get your specific entry
         root_dir
             .iter()
             .map(|e| e.unwrap())
-            .find(|e| e.file_name().to_uppercase() == "STAGE2.BIN") // Example: look for a specific file
-            .map(|e| e.data.first_cluster_lo) // fatfs usually provides a helper for this
+            .find(|e| e.file_name().to_uppercase() == "STAGE2.BIN")
+            .map(|e| e.data.first_cluster_lo)
             .expect("could not find stage2 file")
     };
 
